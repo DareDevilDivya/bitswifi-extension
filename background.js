@@ -16,11 +16,11 @@ chrome.action.onClicked.addListener(() => {
             // Close both tabs
             chrome.tabs.remove(loginTabId, () => {
               console.log(
-                "Login tab closed because the desired page was opened"
+                "Login tab closed because the desired page was opened."
               );
             });
             chrome.tabs.remove(instructTabId, () => {
-              console.log("Instruct tab closed");
+              console.log("Instruct tab closed.");
             });
           }
         });
@@ -31,53 +31,60 @@ chrome.action.onClicked.addListener(() => {
         checkNewTabs(newTab.id);
       });
 
-      // Listener to detect when a tab is updated (which might include URL changes)
-      chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+      // Listener to detect when a tab is updated (including URL changes)
+      chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         if (changeInfo.status === "complete") {
           checkNewTabs(tabId);
         }
       });
 
       // Wait for the login page to be fully loaded
-      chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+      chrome.tabs.onUpdated.addListener(function listener(tabId, info, tab) {
         if (tabId === loginTabId && info.status === "complete") {
           // Retrieve saved credentials from storage
           chrome.storage.local.get(["username", "password"], (result) => {
             const username = result.username;
             const password = result.password;
 
-            // Execute script to fill the login form and submit it
-            chrome.scripting
-              .executeScript({
-                target: { tabId: loginTabId },
-                func: (username, password) => {
-                  const usernameField = document.querySelector(
-                    "#credentials #username"
-                  );
-                  const passwordField = document.querySelector(
-                    "#credentials #password"
-                  );
-                  if (usernameField && passwordField) {
-                    usernameField.value = username;
-                    passwordField.value = password;
+            if (username && password) {
+              // Execute script to fill the login form and submit it
+              chrome.scripting
+                .executeScript({
+                  target: { tabId: loginTabId },
+                  func: (username, password) => {
+                    const usernameField = document.querySelector(
+                      "#credentials #username"
+                    );
+                    const passwordField = document.querySelector(
+                      "#credentials #password"
+                    );
+                    if (usernameField && passwordField) {
+                      usernameField.value = username;
+                      passwordField.value = password;
 
-                    // Create and dispatch an Enter key event on the password field
-                    const event = new KeyboardEvent("keydown", {
-                      key: "Enter",
-                      code: "Enter",
-                      keyCode: 13,
-                      which: 13,
-                      bubbles: true,
-                      cancelable: true,
-                    });
-                    passwordField.dispatchEvent(event);
-                  } else {
-                    console.error("Username or password field not found");
-                  }
-                },
-                args: [username, password],
-              })
-              .catch((err) => console.error("Error executing script:", err));
+                      // Simulate pressing the Enter key on the password field to submit the form
+                      const event = new KeyboardEvent("keydown", {
+                        key: "Enter",
+                        code: "Enter",
+                        keyCode: 13,
+                        which: 13,
+                        bubbles: true,
+                        cancelable: true,
+                      });
+                      passwordField.dispatchEvent(event);
+                    } else {
+                      console.error("Username or password field not found.");
+                    }
+                  },
+                  args: [username, password],
+                })
+                .then(() => {
+                  console.log("Login script executed successfully.");
+                })
+                .catch((err) => console.error("Error executing script:", err));
+            } else {
+              console.error("Username or password not found in storage.");
+            }
           });
 
           // Remove the listener after the login process
